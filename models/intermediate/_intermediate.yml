@@ -1,0 +1,187 @@
+version: 2
+
+models:
+  - name: int_orders
+    description: "Silver layer. Type cast and standardized orders data. Deduplicated on order_id."
+    columns:
+      - name: order_id
+        description: "Unique identifier for each order."
+        data_tests:
+          - unique:
+              severity: warn   # only when business requires
+          - not_null
+      - name: order_date
+        description: "Date the order was placed."
+        data_tests:
+          - not_null
+      - name: order_time
+        description: "Time the order was placed in 24-hour format."
+        data_tests:
+          - not_null
+      - name: SRC_SYS
+        description: "Source system identifier. Always pizza_place."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['pizza_place']
+      - name: CRT_TS
+        description: "Timestamp when dbt first loaded this row."
+        data_tests:
+          - not_null
+      - name: UPD_TS
+        description: "Timestamp when dbt last processed this row."
+        data_tests:
+          - not_null
+
+  - name: int_order_details
+    description: "Silver layer. Type cast and standardized order line items. Deduplicated on order_detail_id."
+    columns:
+      - name: order_detail_id
+        description: "Unique identifier for each order line item."
+        data_tests:
+          - unique
+          - not_null
+      - name: order_id
+        description: "Foreign key to int_orders."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_orders')
+                field: order_id
+      - name: pizza_id
+        description: "Foreign key to int_pizza."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_pizza')
+                field: pizza_id
+      - name: quantity
+        description: "Number of this pizza ordered."
+        data_tests:
+          - not_null
+      - name: SRC_SYS
+        description: "Source system identifier. Always pizza_place."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['pizza_place']
+      - name: CRT_TS
+        description: "Timestamp when dbt first loaded this row."
+        data_tests:
+          - not_null
+      - name: UPD_TS
+        description: "Timestamp when dbt last processed this row."
+        data_tests:
+          - not_null
+
+  - name: int_pizza
+    description: "Silver layer. Type cast and standardized pizza menu data. Deduplicated on pizza_id."
+    columns:
+      - name: pizza_id
+        description: "Unique identifier for each pizza SKU."
+        data_tests:
+          - unique
+          - not_null
+      - name: pizza_type_id
+        description: "Foreign key to int_pizza_types."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_pizza_types')
+                field: pizza_type_id
+      - name: price
+        description: "Price of the pizza in USD."
+        data_tests:
+          - not_null
+      - name: SRC_SYS
+        description: "Source system identifier. Always pizza_place."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['pizza_place']
+      - name: CRT_TS
+        description: "Timestamp when dbt first loaded this row."
+        data_tests:
+          - not_null
+      - name: UPD_TS
+        description: "Timestamp when dbt last processed this row."
+        data_tests:
+          - not_null
+
+  - name: int_pizza_types
+    description: "Silver layer. Type cast and standardized pizza type definitions. Deduplicated on pizza_type_id."
+    columns:
+      - name: pizza_type_id
+        description: "Unique identifier for each pizza type."
+        data_tests:
+          - unique
+          - not_null
+      - name: pizza_name
+        description: "Display name of the pizza type."
+        data_tests:
+          - not_null
+      - name: pizza_category
+        description: "Category the pizza belongs to."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Classic', 'Veggie', 'Supreme', 'Chicken']
+      - name: ingredients
+        description: "Raw comma-separated ingredients string."
+        data_tests:
+          - not_null
+      - name: SRC_SYS
+        description: "Source system identifier. Always pizza_place."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['pizza_place']
+      - name: CRT_TS
+        description: "Timestamp when dbt first loaded this row."
+        data_tests:
+          - not_null
+      - name: UPD_TS
+        description: "Timestamp when dbt last processed this row."
+        data_tests:
+          - not_null
+
+  - name: int_pizza_ingredients
+    description: "Silver layer. Exploded ingredients — one row per ingredient per pizza type. Used to build Gold dimension and bridge tables."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - pizza_type_id
+            - ingredient
+    columns:
+      - name: pizza_type_id
+        description: "Foreign key to stg_pizza_types."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                  to: ref('stg_pizza_types')
+                  field: pizza_type_id
+      - name: pizza_name
+        description: "Display name of the pizza type."
+        data_tests:
+          - not_null
+      - name: pizza_category
+        description: "Category the pizza belongs to."
+        data_tests:
+          - not_null
+      - name: ingredient
+        description: "Individual ingredient trimmed of whitespace."
+        data_tests:
+          - not_null
+      - name: ingredient_position
+        description: "Position of ingredient in the original comma-separated string."
+        data_tests:
+          - not_null

@@ -1,0 +1,130 @@
+version: 2
+
+sources:
+  - name: pizza_place
+    database: DBT_TEST_ANNA
+    schema: PUBLIC
+    description: "Raw pizza place sales data loaded from Maven Analytics CSV files into Snowflake."
+    
+    freshness:
+      warn_after: {count: 24, period: hour}
+      error_after: {count: 48, period: hour}
+    loaded_at_field: CRT_TS
+
+    tables:
+      - name: ORDERS
+        description: "One row per order placed at the pizza restaurant."
+        columns:
+          - name: ORDER_ID
+            description: "Unique identifier for each order."
+          - name: DATE
+            description: "Date the order was placed."
+          - name: TIME
+            description: "Time the order was placed in 24-hour format."
+
+      - name: ORDER_DETAILS
+        description: "One row per pizza per order. An order can have multiple pizzas."
+        columns:
+          - name: ORDER_DETAILS_ID
+            description: "Unique identifier for each order line item."
+          - name: ORDER_ID
+            description: "Foreign key to ORDERS table."
+          - name: PIZZA_ID
+            description: "Foreign key to PIZZAS table."
+          - name: QUANTITY
+            description: "Number of this pizza ordered."
+
+      - name: PIZZA
+        description: "One row per pizza size and type combination. 96 total SKUs."
+        columns:
+          - name: PIZZA_ID
+            description: "Unique identifier for each pizza SKU."
+          - name: PIZZA_TYPE_ID
+            description: "Foreign key to PIZZA_TYPES table."
+          - name: SIZE
+            description: "Size code of the pizza. S, M, L, XL, XXL."
+          - name: PRICE
+            description: "Price of the pizza in USD."
+
+      - name: PIZZA_TYPES
+        description: "One row per pizza type. Contains name, category and ingredients."
+        columns:
+          - name: PIZZA_TYPE_ID
+            description: "Unique identifier for each pizza type."
+          - name: NAME
+            description: "Display name of the pizza type."
+          - name: CATEGORY
+            description: "Category the pizza belongs to e.g. Classic, Veggie, Supreme."
+          - name: INGREDIENTS
+            description: "Comma-separated list of ingredients used in the pizza."
+
+models:
+  - name: stg_orders
+    description: "Bronze layer. Raw capture of orders data with audit columns. No transformations applied."
+    columns:
+      - name: ORDER_ID
+        description: "Unique identifier for each order."
+      - name: DATE
+        description: "Date the order was placed."
+      - name: TIME
+        description: "Time the order was placed."
+      - name: SRC_SYS
+        description: "Source system identifier. Always pizza_place."
+      - name: CRT_TS
+        description: "Timestamp when dbt first loaded this row."
+      - name: UPD_TS
+        description: "Timestamp when dbt last processed this row."
+
+  - name: stg_order_details
+    description: "Bronze layer. Raw capture of order line items with audit columns. No transformations applied."
+    columns:
+      - name: ORDER_DETAILS_ID
+        description: "Unique identifier for each order line item."
+      - name: ORDER_ID
+        description: "Foreign key to stg_orders."
+      - name: PIZZA_ID
+        description: "Foreign key to stg_pizza."
+      - name: QUANTITY
+        description: "Number of this pizza ordered."
+      - name: SRC_SYS
+        description: "Source system identifier. Always pizza_place."
+      - name: CRT_TS
+        description: "Timestamp when dbt first loaded this row."
+      - name: UPD_TS
+        description: "Timestamp when dbt last processed this row."
+
+  - name: stg_pizza
+    description: "Bronze layer. Raw capture of pizza menu data with audit columns. No transformations applied."
+    columns:
+      - name: PIZZA_ID
+        description: "Unique identifier for each pizza SKU."
+      - name: PIZZA_TYPE_ID
+        description: "Foreign key to stg_pizza_types."
+      - name: SIZE
+        description: "Raw size code of the pizza."
+      - name: PRICE
+        description: "Price of the pizza in USD."
+      - name: SRC_SYS
+        description: "Source system identifier. Always pizza_place."
+      - name: CRT_TS
+        description: "Timestamp when dbt first loaded this row."
+      - name: UPD_TS
+        description: "Timestamp when dbt last processed this row."
+
+  - name: stg_pizza_types
+    description: "Bronze layer. Raw capture of pizza type definitions with audit columns. No transformations applied."
+    columns:
+      - name: PIZZA_TYPE_ID
+        description: "Unique identifier for each pizza type."
+      - name: NAME
+        description: "Display name of the pizza type."
+      - name: CATEGORY
+        description: "Category the pizza belongs to."
+      - name: INGREDIENTS
+        description: "Raw comma-separated ingredients string."
+      - name: SRC_SYS
+        description: "Source system identifier. Always pizza_place."
+      - name: CRT_TS
+        description: "Timestamp when dbt first loaded this row."
+      - name: UPD_TS
+        description: "Timestamp when dbt last processed this row."

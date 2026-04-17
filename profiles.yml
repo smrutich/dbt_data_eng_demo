@@ -1,0 +1,13 @@
+test:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: jsa18243
+      user: smruti.chourasia@ibm.com
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: ANNA_TEST_ROLE
+      warehouse: ANNA_TEST_WH
+      database: DBT_TEST_ANNA
+      schema: PUBLIC
+      threads: 4

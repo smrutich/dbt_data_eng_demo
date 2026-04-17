@@ -1,0 +1,6 @@
+size_code,size_label,size_description,serves_min,serves_max,sort_order
+S,Small,Personal size pizza,1,2,1
+M,Medium,Standard sharing size,2,3,2
+L,Large,Family size pizza,3,4,3
+XL,X-Large,Party size pizza,4,5,4
+XXL,XX-Large,Extra large party size,5,6,5

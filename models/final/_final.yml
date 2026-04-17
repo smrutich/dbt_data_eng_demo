@@ -1,0 +1,175 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: "Gold layer. Conformed date dimension generated from a date spine covering 2015. One row per calendar date."
+    columns:
+      - name: date_sk
+        description: "Surrogate key generated from calendar_date."
+        data_tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+      - name: month_number
+        description: "Month number 1-12."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1,2,3,4,5,6,7,8,9,10,11,12]
+              severity: error
+      - name: quarter_number
+        description: "Quarter number 1-4."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1,2,3,4]
+              severity: error
+      - name: is_weekend
+        description: "Boolean flag indicating if the date is a weekend."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [true, false]
+              severity: error
+
+  - name: dim_pizza
+    description: "Gold layer. Pizza dimension combining SKU and type attributes. One row per pizza_id."
+    columns:
+      - name: pizza_sk
+        description: "Surrogate key generated from pizza_id."
+        data_tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+      - name: pizza_category
+        description: "Category the pizza belongs to."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Classic', 'Veggie', 'Supreme', 'Chicken']
+              severity: error
+      - name: pizza_size
+        description: "Standardized size label."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Small', 'Medium', 'Large', 'X-Large', 'XX-Large']
+              severity: error
+      - name: price_tier
+        description: "Business tier classification based on price."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Budget', 'Standard', 'Premium', 'Luxury']
+              severity: error
+
+  - name: dim_ingredients
+    description: "Gold layer. Unique ingredients dimension. One row per distinct ingredient."
+    columns:
+      - name: ingredient_sk
+        description: "Surrogate key generated from ingredient name."
+        data_tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+
+  - name: lookup_pizza_ingredients
+    description: "Gold layer. Bridge table resolving many-to-many between dim_pizza and dim_ingredients."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - pizza_type_id
+              - ingredient
+          severity: error
+    columns:
+      - name: pizza_ingredient_sk
+        description: "Surrogate key generated from pizza_type_id and ingredient."
+        data_tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+      - name: pizza_type_sk
+        description: "Surrogate key. Referential integrity check against dim_pizza."
+        data_tests:
+          - not_null:
+              severity: error
+          - relationships:
+              arguments:
+                to: ref('dim_pizza')
+                field: pizza_type_sk
+              severity: error
+      - name: ingredient_sk
+        description: "Surrogate key. Referential integrity check against dim_ingredients."
+        data_tests:
+          - not_null:
+              severity: error
+          - relationships:
+              arguments:
+                to: ref('dim_ingredients')
+                field: ingredient_sk
+              severity: error
+
+  - name: fact_orders
+    description: "Gold layer. Core fact table. One row per order line item. Grain is order_detail_id."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - order_detail_id
+              - pizza_id
+          severity: error
+    columns:
+      - name: order_detail_sk
+        description: "Surrogate key generated from order_detail_id."
+        data_tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+
+      # referential integrity checks
+      - name: pizza_sk
+        description: "Surrogate key. Referential integrity check against dim_pizza."
+        data_tests:
+          - not_null:
+              severity: error
+          - relationships:
+              arguments:
+                to: ref('dim_pizza')
+                field: pizza_sk
+              severity: error
+      - name: date_sk
+        description: "Surrogate key. Referential integrity check against dim_date."
+        data_tests:
+          - not_null:
+              severity: error
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_sk
+              severity: error
+
+      # business rule validation
+      - name: quantity
+        description: "Number of pizzas ordered. Must be greater than 0."
+        data_tests:
+          - not_null:
+              severity: error
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+              severity: error
+      - name: order_date
+        description: "Date the order was placed. Must be within 2015."
+        data_tests:
+          - not_null:
+              severity: error
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= '2015-01-01' and order_date <= '2015-12-31'"
+              severity: error
